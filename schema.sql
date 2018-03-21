@@ -28,7 +28,7 @@ CREATE TABLE wikipedia_anon_revisions (
 CREATE UNIQUE INDEX wikipedia_anon_revisions_page_revision ON wikipedia_anon_revisions(page, revision);
 
 CREATE OR REPLACE VIEW view_page_revisions AS
-    SELECT * FROM wikipedia_anon_revisions WHERE ns=0;
+    SELECT page, revision, ip, iso2, timestamp FROM wikipedia_anon_revisions WHERE ns=0;
 
 CREATE OR REPLACE VIEW view_page_geotags AS
     SELECT
@@ -47,4 +47,9 @@ CREATE OR REPLACE VIEW view_page_geotag_primary AS
     SELECT DISTINCT ON (page) *
     FROM view_page_geotags
     ORDER BY page, "primary" DESC, id ASC;
+
+CREATE OR REPLACE VIEW view_page_country AS
+    SELECT page, gid
+    FROM view_page_geotag_primary g
+    JOIN countries ON ST_Contains(geom, ST_Point(lon, lat));
 
