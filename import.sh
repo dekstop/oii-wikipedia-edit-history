@@ -36,9 +36,9 @@ time $PSQL < ${srcdir}/schema.sql || exit 1
 ## Revision history metadata
 ##
 
-WGET="wget --directory-prefix=${datadir}"
-$WGET https://dumps.wikimedia.org/${wiki}/${date}/${wiki}-${date}-stub-meta-history.xml.gz || exit 1
-$WGET https://dumps.wikimedia.org/${wiki}/${date}/${wiki}-${date}-geo_tags.sql.gz || exit 1
+WGET="wget --continue --directory-prefix=${datadir}"
+$WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-stub-meta-history.xml.gz || exit 1
+$WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-geo_tags.sql.gz || exit 1
 
 echo "Parsing the history XML... this will take a while."
 time $PYTHON ${srcdir}/revisions.py \
@@ -74,8 +74,13 @@ time $PSQL -c "DROP TABLE IF EXISTS page_country; CREATE TABLE page_country AS S
 ## Export
 ##
 
-$PSQL -c "COPY (SELECT * FROM view_page_geotags) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotags.csv || exit 1
-$PSQL -c "COPY (SELECT * FROM view_page_geotag_primary) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotag_primary.csv || exit 1
+# Tables
+$PSQL -c "COPY page_geotags TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotags.csv || exit 1
+$PSQL -c "COPY page_geotag_primary TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotag_primary.csv || exit 1
 $PSQL -c "COPY (SELECT page, iso_a2 as iso2 FROM page_country p join countries c on (p.gid=c.gid)) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotag_primary_iso2.csv || exit 1
-$PSQL -c "COPY (SELECT * FROM view_page_revisions) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_revisions.csv || exit 1
+$PSQL -c "COPY page_revisions TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_revisions.csv || exit 1
+
+# Maps
+$PSQL -c "COPY (SELECT p.page, max(lat) as lat, max(lon) as lon, r.iso2 as editor_iso2, count(*) as edits FROM page_geotags p JOIN page_revisions r ON (p.page=r.page) GROUP BY p.page, editor_iso2) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_coords_editor_country.csv || exit 1
+$PSQL -c "COPY (SELECT p.page, max(lat) as lat, max(lon) as lon, count(*) as edits FROM page_geotags p JOIN page_revisions r ON (p.page=r.page) GROUP BY p.page) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_coords.csv || exit 1
 
