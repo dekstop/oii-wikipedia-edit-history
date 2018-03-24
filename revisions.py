@@ -127,7 +127,7 @@ if __name__ == "__main__":
                         # progress
                         idx += 1
                         if (idx % 100000)==0:
-                            print "{:,}... (cache size: {:,}, {:,} cache evictions)".format(idx, len(geoip_iso2_cache), geoip_iso2_cache.num_evictions-prev_cache_evictions)
+                            print "Record #{:,} with revision id {}... (GeoIP cache size: {:,}, {:,} cache evictions)".format(idx, revisionid, len(geoip_iso2_cache), geoip_iso2_cache.num_evictions-prev_cache_evictions)
                             prev_cache_evictions = geoip_iso2_cache.num_evictions
                             if args.heapdump:
                                 from guppy import hpy
