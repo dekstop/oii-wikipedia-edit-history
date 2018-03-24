@@ -1,7 +1,18 @@
 #!/bin/bash
 
-wiki=simplewiki
-date=20180220
+lang=
+date=
+
+if [[ $# -ne 2 ]]
+then
+  echo "Usage : $0 <language> <date>"
+  exit 1
+else
+  lang=$1
+  date=$2
+fi
+
+wiki=${lang}wiki
 DB=${wiki}_${date}
 
 PSQL="psql --set ON_ERROR_STOP=1 -U oiidg -h localhost ${DB}"
@@ -41,7 +52,7 @@ $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-stub-meta-
 $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-geo_tags.sql.gz || exit 1
 
 echo "Parsing the history XML... this will take a while."
-time $PYTHON ${srcdir}/revisions.py \
+time $PYTHON ${srcdir}/revisions.py --errors \
     ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
     ${geoipdir}/GeoLite2-Country-current/GeoLite2-Country.mmdb \
     ${etldir}/${wiki}-${date}-history-revisions.csv.gz || exit 1
