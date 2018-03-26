@@ -19,19 +19,23 @@ CREATE TABLE wikitemplate.wikipedia_geo_tags (
 );
 CREATE UNIQUE INDEX ON wikitemplate.wikipedia_geo_tags(gt_id);
 
-DROP TABLE IF EXISTS wikitemplate.wikipedia_anon_revisions CASCADE;
-CREATE TABLE wikitemplate.wikipedia_anon_revisions (
+DROP TABLE IF EXISTS wikitemplate.wikipedia_revisions CASCADE;
+CREATE TABLE wikitemplate.wikipedia_revisions (
       ns integer NOT NULL,
       page integer NOT NULL,
       revision integer NOT NULL,
+      contributor INTEGER NOT NULL,
       ip TEXT NOT NULL,
       iso2 TEXT DEFAULT NULL,
-      timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL
+      timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+      sha1 TEXT NOT NULL,
+      sha1_is_known bool NOT NULL,
+      comment TEXT DEFAULT NULL
 );
-CREATE UNIQUE INDEX ON wikitemplate.wikipedia_anon_revisions(page, revision);
+CREATE UNIQUE INDEX ON wikitemplate.wikipedia_revisions(page, revision);
 
 CREATE OR REPLACE VIEW wikitemplate.view_page_revisions AS
-    SELECT page, revision, ip, iso2, timestamp FROM wikitemplate.wikipedia_anon_revisions WHERE ns=0;
+    SELECT page, revision, contributor, ip, iso2, timestamp FROM wikitemplate.wikipedia_revisions WHERE ns=0;
 
 CREATE OR REPLACE VIEW wikitemplate.view_page_geotags AS
     SELECT

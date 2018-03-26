@@ -93,10 +93,11 @@ if __name__ == "__main__":
     prev_cache_evictions = 0
  
     with gzip.open(outfile, 'wb') as o:
-        writer = csv.writer(o, delimiter=',')
-        writer.writerow(['ns', 'pageid', 'revisionid', 'ip', 'iso2', 'timestamp'])
+        writer = csv.writer(o, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
+        writer.writerow(['ns', 'pageid', 'revisionid', 'contributorid', 'ip', 'iso2', 'timestamp', 'sha1', 'sha1_is_known', 'comment'])
         idx = 0
         inrevision = False
+        known_sha1s = set()
         context = etree.iterparse(gzip.open(args.infile, 'r'), events=('start', 'end'))
         event, root = context.next()
         for event, elem in context:
@@ -104,26 +105,48 @@ if __name__ == "__main__":
             if event == 'start':
                 if tag == 'page': 
                     inrevision = False
+                    incontributor = False
                     pageid = None
                     ns = None
+                    known_sha1s.clear()
                 elif tag == 'revision':
                     inrevision = True
+                    incontributor = False
                     revisionid = None
+                    username = None
                     ip = None
                     iso2 = None
                     timestamp = None
+                    sha1 = None
+                    sha1_is_known = False
+                    comment = None
+                elif tag == 'contributor':
+                    incontributor = True
             elif event == 'end':
                 if inrevision:
-                    if tag == 'id':
-                        revisionid = int(elem.text)
+                    if tag == 'contributor':
+                        incontributor = False
+                    elif tag == 'id':
+                        if incontributor:
+                            contributorid = int(elem.text)
+                        else:
+                            revisionid = int(elem.text)
                     elif tag == 'ip':
                         ip = elem.text
                         iso2 = geoip_iso2(geoip, geoip_iso2_cache, ip)
                     elif tag == 'timestamp':
                         timestamp = elem.text
+                    elif tag == 'comment':
+                        if elem.text:
+                            comment = elem.text.encode('utf-8')
+                    elif tag == 'sha1':
+                        sha1 = elem.text
+                        if sha1 in known_sha1s:
+                            sha1_is_known = True
+                        known_sha1s.add(sha1)
                     elif tag == 'revision':
-                        if ip != None: # only record anon contributions
-                            writer.writerow([ns, pageid, revisionid, ip, iso2, timestamp])
+                        # if ip != None: # only record anon contributions
+                        writer.writerow([ns, pageid, revisionid, contributorid, ip, iso2, timestamp, sha1, sha1_is_known, comment])
                         # progress
                         idx += 1
                         if (idx % 100000)==0:

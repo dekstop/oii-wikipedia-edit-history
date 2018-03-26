@@ -49,12 +49,12 @@ $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-stub-meta-
 $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-geo_tags.sql.gz || exit 1
 
 echo "Parsing the history XML... this will take a while."
-#time $PYTHON ${srcdir}/revisions.py --errors \
-#    ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
-#    ${geoipdir}/GeoLite2-Country-current/GeoLite2-Country.mmdb \
-#    ${etldir}/${wiki}-${date}-history-revisions.csv.gz || exit 1
+time $PYTHON ${srcdir}/revisions.py --errors \
+    ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
+    ${geoipdir}/GeoLite2-Country-current/GeoLite2-Country.mmdb \
+    ${etldir}/${wiki}-${date}-history-revisions.csv.gz || exit 1
 
-time pv ${etldir}/${wiki}-${date}-history-revisions.csv.gz | gunzip | $PSQL -c "COPY ${wiki}.wikipedia_anon_revisions FROM STDIN DELIMITERS ',' CSV HEADER QUOTE E'\"' ESCAPE '\' NULL 'None'" || exit 1
+time pv ${etldir}/${wiki}-${date}-history-revisions.csv.gz | gunzip | sed 's/\r//' | $PSQL -c "COPY ${wiki}.wikipedia_revisions FROM STDIN DELIMITERS ',' CSV HEADER QUOTE E'\"' NULL 'None'" || exit 1
 time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.page_revisions; CREATE TABLE ${wiki}.page_revisions AS SELECT * FROM ${wiki}.view_page_revisions" || exit 1
 
 ##
