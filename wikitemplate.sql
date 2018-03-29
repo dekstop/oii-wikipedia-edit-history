@@ -24,20 +24,26 @@ CREATE TABLE wikitemplate.wikipedia_revisions (
       ns integer NOT NULL,
       page integer NOT NULL,
       revision integer NOT NULL,
-      contributor INTEGER NOT NULL,
-      ip TEXT NOT NULL,
+      contributor INTEGER DEFAULT NULL,
       iso2 TEXT DEFAULT NULL,
       timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-      sha1 TEXT NOT NULL,
-      sha1_is_known bool NOT NULL,
-      comment TEXT DEFAULT NULL
+      sha1_is_known bool NOT NULL
 );
 CREATE UNIQUE INDEX ON wikitemplate.wikipedia_revisions(page, revision);
 
-CREATE OR REPLACE VIEW wikitemplate.view_page_revisions AS
-    SELECT page, revision, contributor, ip, iso2, timestamp FROM wikitemplate.wikipedia_revisions WHERE ns=0;
+CREATE OR REPLACE VIEW wikitemplate.view_article_revisions AS
+    SELECT page, revision, contributor, iso2, timestamp FROM wikitemplate.wikipedia_revisions WHERE ns=0;
 
-CREATE OR REPLACE VIEW wikitemplate.view_page_geotags AS
+DROP VIEW IF EXISTS wikitemplate.view_wikipedia_page_stats;
+CREATE VIEW wikitemplate.view_wikipedia_page_stats AS 
+  SELECT ns, page, 
+    count(*) num_revisions, 
+    sum(sha1_is_known::integer) as num_reverts 
+  FROM wikitemplate.wikipedia_revisions 
+  GROUP BY ns, page;
+
+
+CREATE OR REPLACE VIEW wikitemplate.view_article_geotags AS
     SELECT
       gt_id as id, gt_page_id as page,
       gt_primary as primary,
@@ -46,17 +52,22 @@ CREATE OR REPLACE VIEW wikitemplate.view_page_geotags AS
       gt_name as name, 
       gt_country as country, gt_region as region
     FROM wikitemplate.wikipedia_geo_tags g
-    JOIN (SELECT DISTINCT page FROM wikitemplate.view_page_revisions) r ON (g.gt_page_id=r.page)
+    JOIN (SELECT DISTINCT page FROM wikitemplate.view_article_revisions) r ON (g.gt_page_id=r.page)
     WHERE gt_globe='earth'
     ORDER BY page, id;
 
-CREATE OR REPLACE VIEW wikitemplate.view_page_geotag_primary AS
+CREATE OR REPLACE VIEW wikitemplate.view_article_geotag_primary AS
     SELECT DISTINCT ON (page) *
-    FROM wikitemplate.view_page_geotags
+    FROM wikitemplate.view_article_geotags
     ORDER BY page, "primary" DESC, id ASC;
 
-CREATE OR REPLACE VIEW wikitemplate.view_page_country AS
+CREATE OR REPLACE VIEW wikitemplate.view_article_country AS
     SELECT page, gid
-    FROM wikitemplate.view_page_geotag_primary g
+    FROM wikitemplate.view_article_geotag_primary g
     JOIN countries ON ST_Contains(geom, ST_Point(lon, lat));
+
+CREATE OR REPLACE VIEW wikitemplate.view_article_province AS
+    SELECT page, gid
+    FROM wikitemplate.view_article_geotag_primary g
+    JOIN provinces ON ST_Contains(geom, ST_Point(lon, lat));
 

@@ -94,7 +94,7 @@ if __name__ == "__main__":
  
     with gzip.open(outfile, 'wb') as o:
         writer = csv.writer(o, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
-        writer.writerow(['ns', 'pageid', 'revisionid', 'contributorid', 'ip', 'iso2', 'timestamp', 'sha1', 'sha1_is_known', 'comment'])
+        writer.writerow(['ns', 'pageid', 'revisionid', 'contributorid', 'iso2', 'timestamp', 'sha1_is_known'])
         idx = 0
         inrevision = False
         known_sha1s = set()
@@ -106,14 +106,14 @@ if __name__ == "__main__":
                 if tag == 'page': 
                     inrevision = False
                     incontributor = False
-                    pageid = None
+                    pageid  = None
                     ns = None
                     known_sha1s.clear()
                 elif tag == 'revision':
                     inrevision = True
                     incontributor = False
                     revisionid = None
-                    username = None
+                    contributorid = None
                     ip = None
                     iso2 = None
                     timestamp = None
@@ -136,9 +136,6 @@ if __name__ == "__main__":
                         iso2 = geoip_iso2(geoip, geoip_iso2_cache, ip)
                     elif tag == 'timestamp':
                         timestamp = elem.text
-                    elif tag == 'comment':
-                        if elem.text:
-                            comment = elem.text.encode('utf-8')
                     elif tag == 'sha1':
                         sha1 = elem.text
                         if sha1 in known_sha1s:
@@ -146,7 +143,7 @@ if __name__ == "__main__":
                         known_sha1s.add(sha1)
                     elif tag == 'revision':
                         # if ip != None: # only record anon contributions
-                        writer.writerow([ns, pageid, revisionid, contributorid, ip, iso2, timestamp, sha1, sha1_is_known, comment])
+                        writer.writerow([ns, pageid, revisionid, contributorid, iso2, timestamp, sha1_is_known])
                         # progress
                         idx += 1
                         if (idx % 100000)==0:

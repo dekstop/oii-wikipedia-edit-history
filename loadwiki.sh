@@ -29,9 +29,6 @@ csvdir=${datadir}/csv
 mkdir -p $etldir 2>&1
 mkdir -p $csvdir 2>&1
 
-neshapefile=~/oiidg/natural-earth/ne_10m_admin_0_countries.shp
-nesqlfile=${etldir}/ne_10m_admin_0_countries.sql
-
 ##
 ## DB schema
 ##
@@ -54,11 +51,12 @@ time $PYTHON ${srcdir}/revisions.py --errors \
     ${geoipdir}/GeoLite2-Country-current/GeoLite2-Country.mmdb \
     ${etldir}/${wiki}-${date}-history-revisions.csv.gz || exit 1
 
-time pv ${etldir}/${wiki}-${date}-history-revisions.csv.gz | gunzip | sed 's/\r//' | $PSQL -c "COPY ${wiki}.wikipedia_revisions FROM STDIN DELIMITERS ',' CSV HEADER QUOTE E'\"' NULL 'None'" || exit 1
-time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.page_revisions; CREATE TABLE ${wiki}.page_revisions AS SELECT * FROM ${wiki}.view_page_revisions" || exit 1
+time pv ${etldir}/${wiki}-${date}-history-revisions.csv.gz | gunzip | sed 's/\r//' | sed 's/,""/,/g' | $PSQL -c "COPY ${wiki}.wikipedia_revisions FROM STDIN DELIMITERS ',' CSV HEADER QUOTE E'\"'" || exit 1
+time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.article_revisions; CREATE TABLE ${wiki}.article_revisions AS SELECT * FROM ${wiki}.view_article_revisions" || exit 1
+time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.wikipedia_page_stats; CREATE TABLE ${wiki}.wikipedia_page_stats AS SELECT * FROM ${wiki}.view_wikipedia_page_stats" || exit 1
 
 ##
-## Geo tags for pages
+## Geo tags for articles
 ##
 
 # As the SQL dumps are in MySQL format... convert INSERT statements to CSV.
@@ -68,27 +66,29 @@ function sql_insert_to_csv() {
 }
 
 time pv ${datadir}/${wiki}-${date}-geo_tags.sql.gz | gunzip | sql_insert_to_csv |  $PSQL -c "COPY ${wiki}.wikipedia_geo_tags FROM STDIN DELIMITERS ',' CSV QUOTE E'\'' ESCAPE '\' NULL 'NULL'" || exit 1
-time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.page_geotags; CREATE TABLE ${wiki}.page_geotags AS SELECT * FROM ${wiki}.view_page_geotags" || exit 1
-time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.page_geotag_primary; CREATE TABLE ${wiki}.page_geotag_primary AS SELECT * FROM ${wiki}.view_page_geotag_primary" || exit 1
+time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.article_geotags; CREATE TABLE ${wiki}.article_geotags AS SELECT * FROM ${wiki}.view_article_geotags" || exit 1
+time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.article_geotag_primary; CREATE TABLE ${wiki}.article_geotag_primary AS SELECT * FROM ${wiki}.view_article_geotag_primary" || exit 1
 
 ##
-## Spatial join
+## Spatial joins
 ## 
 
-echo "Spatial join... this will take a while."
-time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.page_country; CREATE TABLE ${wiki}.page_country AS SELECT * FROM ${wiki}.view_page_country" || exit 1
+echo "Spatial joins... this will take a while."
+time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.article_country; CREATE TABLE ${wiki}.article_country AS SELECT * FROM ${wiki}.view_article_country" || exit 1
+time $PSQL -c "DROP TABLE IF EXISTS ${wiki}.article_province; CREATE TABLE ${wiki}.article_province AS SELECT * FROM ${wiki}.view_article_province" || exit 1
 
 ##
 ## Export
 ##
 
 # Tables
-$PSQL -c "COPY ${wiki}.page_geotags TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotags.csv || exit 1
-$PSQL -c "COPY ${wiki}.page_geotag_primary TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotag_primary.csv || exit 1
-$PSQL -c "COPY (SELECT page, iso_a2 as iso2 FROM ${wiki}.page_country p join countries c on (p.gid=c.gid)) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_geotag_primary_iso2.csv || exit 1
-$PSQL -c "COPY ${wiki}.page_revisions TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_revisions.csv || exit 1
+#$PSQL -c "COPY ${wiki}.article_geotags TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_geotags.csv || exit 1
+#$PSQL -c "COPY ${wiki}.article_geotag_primary TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_geotag_primary.csv || exit 1
+$PSQL -c "COPY (SELECT page, iso_a2 as iso2 FROM ${wiki}.article_country a join countries c on (a.gid=c.gid)) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_geotag_primary_country.csv || exit 1
+$PSQL -c "COPY (SELECT page, iso_a2 as iso2, iso_3166_2, name FROM ${wiki}.article_province a join provinces p on (a.gid=p.gid)) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_geotag_primary_province.csv || exit 1
+#$PSQL -c "COPY ${wiki}.article_revisions TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_revisions.csv || exit 1
 
 # Maps
-$PSQL -c "COPY (SELECT p.page, max(lat) as lat, max(lon) as lon, r.iso2 as editor_iso2, count(*) as edits FROM ${wiki}.page_geotags p JOIN ${wiki}.page_revisions r ON (p.page=r.page) GROUP BY p.page, editor_iso2) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_coords_editor_country.csv || exit 1
-$PSQL -c "COPY (SELECT p.page, max(lat) as lat, max(lon) as lon, count(*) as edits FROM ${wiki}.page_geotags p JOIN ${wiki}.page_revisions r ON (p.page=r.page) GROUP BY p.page) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-page_coords.csv || exit 1
+$PSQL -c "COPY (SELECT ag.page, max(lat) as lat, max(lon) as lon, ar.iso2 as editor_iso2, count(*) as edits FROM ${wiki}.article_geotags ag JOIN ${wiki}.article_revisions ar ON (ag.page=ar.page) GROUP BY ag.page, editor_iso2) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_coords_editor_country.csv || exit 1
+$PSQL -c "COPY (SELECT ag.page, max(lat) as lat, max(lon) as lon, count(*) as edits FROM ${wiki}.article_geotags ag JOIN ${wiki}.article_revisions ar ON (ag.page=ar.page) GROUP BY ag.page) TO STDOUT CSV HEADER" > ${csvdir}/${wiki}-${date}-article_coords.csv || exit 1
 
