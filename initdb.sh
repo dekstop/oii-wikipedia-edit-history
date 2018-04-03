@@ -47,4 +47,5 @@ load_shapefile provinces \
 ## DB schema
 ##
 # time $PSQL < ${srcdir}/globalschema.sql || exit 1
+time $PSQL < ${srcdir}/functions.sql || exit 1
 
