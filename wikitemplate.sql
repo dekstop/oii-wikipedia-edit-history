@@ -3,7 +3,6 @@ CREATE SCHEMA wikitemplate;
 
 -- This simply follows the WP MySQL schema, although using Postgres types.
 -- All subsequent tables will use our own schema conventions.
-DROP TABLE IF EXISTS wikitemplate.wikipedia_geo_tags CASCADE;
 CREATE TABLE wikitemplate.wikipedia_geo_tags (
       gt_id serial NOT NULL,
       gt_page_id serial NOT NULL,
@@ -19,7 +18,6 @@ CREATE TABLE wikitemplate.wikipedia_geo_tags (
 );
 CREATE UNIQUE INDEX ON wikitemplate.wikipedia_geo_tags(gt_id);
 
-DROP TABLE IF EXISTS wikitemplate.wikipedia_revisions CASCADE;
 CREATE TABLE wikitemplate.wikipedia_revisions (
       ns integer NOT NULL,
       page integer NOT NULL,
@@ -31,11 +29,7 @@ CREATE TABLE wikitemplate.wikipedia_revisions (
 );
 CREATE UNIQUE INDEX ON wikitemplate.wikipedia_revisions(page, revision);
 
-CREATE OR REPLACE VIEW wikitemplate.view_article_revisions AS
-    SELECT page, revision, contributor, iso2, timestamp FROM wikitemplate.wikipedia_revisions WHERE ns=0;
-
-DROP VIEW IF EXISTS wikitemplate.view_wikipedia_page_stats;
-CREATE VIEW wikitemplate.view_wikipedia_page_stats AS 
+CREATE MATERIALIZED VIEW wikitemplate.wikipedia_page_stats AS 
   SELECT ns, page, 
     count(*) num_revisions, 
     sum(sha1_is_known::integer) as num_reverts 
@@ -43,7 +37,10 @@ CREATE VIEW wikitemplate.view_wikipedia_page_stats AS
   GROUP BY ns, page;
 
 
-CREATE OR REPLACE VIEW wikitemplate.view_article_geotags AS
+CREATE VIEW wikitemplate.view_article_revisions AS
+    SELECT page, revision, contributor, iso2, timestamp FROM wikitemplate.wikipedia_revisions WHERE ns=0;
+
+CREATE MATERIALIZED VIEW wikitemplate.article_geotags AS
     SELECT
       gt_id as id, gt_page_id as page,
       gt_primary as primary,
@@ -56,18 +53,23 @@ CREATE OR REPLACE VIEW wikitemplate.view_article_geotags AS
     WHERE gt_globe='earth'
     ORDER BY page, id;
 
-CREATE OR REPLACE VIEW wikitemplate.view_article_geotag_primary AS
+CREATE MATERIALIZED VIEW wikitemplate.article_geotag_primary AS
     SELECT DISTINCT ON (page) *
-    FROM wikitemplate.view_article_geotags
+    FROM wikitemplate.article_geotags
+    WHERE page NOT IN (
+      SELECT page 
+      FROM wikitemplate.article_geotags 
+      GROUP BY page 
+      HAVING count(*)>4
+    )
     ORDER BY page, "primary" DESC, id ASC;
 
-CREATE OR REPLACE VIEW wikitemplate.view_article_country AS
+CREATE MATERIALIZED VIEW wikitemplate.article_country AS
     SELECT page, gid
-    FROM wikitemplate.view_article_geotag_primary g
+    FROM wikitemplate.article_geotag_primary g
     JOIN countries ON ST_Contains(geom, ST_Point(lon, lat));
 
-CREATE OR REPLACE VIEW wikitemplate.view_article_province AS
+CREATE MATERIALIZED VIEW wikitemplate.article_province AS
     SELECT page, gid
-    FROM wikitemplate.view_article_geotag_primary g
+    FROM wikitemplate.article_geotag_primary g
     JOIN provinces ON ST_Contains(geom, ST_Point(lon, lat));
-

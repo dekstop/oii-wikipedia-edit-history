@@ -38,10 +38,20 @@ function load_shapefile() {
 load_shapefile countries \
     ~/oiidg/natural-earth/ne_10m_admin_0_countries/ne_10m_admin_0_countries.shp \
     ${etldir}/ne_10m_admin_0_countries.sql || exit 1
+$PSQL -c "UPDATE countries SET iso_a2='FR', iso_a3='FRA' WHERE name='France'" || exit 1
+$PSQL -c "UPDATE countries SET iso_a2='NO', iso_a3='NOT' WHERE name='Norway'" || exit 1
 
 load_shapefile provinces \
     ~/oiidg/natural-earth/ne_10m_admin_1_states_provinces/ne_10m_admin_1_states_provinces.shp \
     ${etldir}/ne_10m_admin_1_states_provinces.sql || exit 1
+
+load_shapefile hexbins2 \
+    ~/oiidg/hexbins/hexbins2.shp \
+    ${etldir}/hexbins2.sql || exit 1
+
+load_shapefile hexbins5 \
+    ~/oiidg/hexbins/hexbins5.shp \
+    ${etldir}/hexbins5.sql || exit 1
 
 ##
 ## DB schema
