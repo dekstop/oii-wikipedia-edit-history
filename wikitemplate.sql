@@ -56,11 +56,11 @@ CREATE MATERIALIZED VIEW wikitemplate.article_geotags AS
 CREATE MATERIALIZED VIEW wikitemplate.article_geotag_primary AS
     SELECT DISTINCT ON (page) *
     FROM wikitemplate.article_geotags
-    WHERE page NOT IN (
+    WHERE page IN (
       SELECT page 
       FROM wikitemplate.article_geotags 
       GROUP BY page 
-      HAVING count(*)>4
+      HAVING count(*)<=4
     )
     ORDER BY page, "primary" DESC, id ASC;
 
