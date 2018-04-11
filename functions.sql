@@ -17,11 +17,12 @@ BEGIN
     query := 'CREATE VIEW ' || quote_ident(global_schema) || '.' || 
         quote_ident(view_table_name) || ' AS ';
     FOR schema IN 
-        SELECT table_schema 
-        FROM information_schema.tables 
-        WHERE table_schema LIKE '%wiki'
-        AND table_name=view_table_name
-        ORDER BY table_schema
+        SELECT n.nspname as table_schema
+        FROM pg_class 
+        JOIN pg_catalog.pg_namespace n ON n.oid=pg_class.relnamespace 
+        WHERE n.nspname LIKE '%wiki'
+        AND relname=view_table_name
+        ORDER BY nspname
     LOOP 
         -- RAISE NOTICE '%', schema.table_schema;
         IF first_table THEN
