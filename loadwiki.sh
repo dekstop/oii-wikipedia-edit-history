@@ -25,10 +25,8 @@ geoipdir=~/oiidg/geoip
 
 datadir=~/oiidg/data/${wiki}_${date}
 etldir=${datadir}/etl
-csvdir=${datadir}/csv
 
 mkdir -p $etldir 2>&1
-mkdir -p $csvdir 2>&1
 
 ##
 ## DB schema
@@ -46,14 +44,14 @@ WGET="wget --continue --directory-prefix=${datadir}"
 $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-stub-meta-history.xml.gz || exit 1
 $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-geo_tags.sql.gz || exit 1
 
-echo "Parsing the history XML... this will take a while."
+echo "Extracting page revision metadata... this will take a while."
 time $PYTHON ${srcdir}/revisions.py --errors \
     ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
     ${geoipdir}/GeoLite2-Country-current/GeoLite2-Country.mmdb \
     ${etldir}/${wiki}-${date}-history-revisions.csv.gz || exit 1
 
 time pv ${etldir}/${wiki}-${date}-history-revisions.csv.gz | gunzip | sed 's/\r//' | sed 's/,""/,/g' | $PSQL -c "COPY ${schema}.wikipedia_revisions FROM STDIN DELIMITERS ',' CSV HEADER QUOTE E'\"'" || exit 1
-time $PSQL -c "REFRESH MATERIALIZED VIEW ${schema}.wikipedia_page_stats" || exit 1
+time $PSQL -c "REFRESH MATERIALIZED VIEW ${schema}.page_stats" || exit 1
 
 ##
 ## Geo tags for articles
@@ -79,4 +77,15 @@ time $PSQL -c "REFRESH MATERIALIZED VIEW ${schema}.article_geotag_primary" || ex
 
 time $PSQL -c "REFRESH MATERIALIZED VIEW ${schema}.article_country" || exit 1
 time $PSQL -c "REFRESH MATERIALIZED VIEW ${schema}.article_province" || exit 1
+
+##
+## Controvery scores
+##
+
+echo "Computing controversy scores from the edit history... this will take a while."
+time $PYTHON ${srcdir}/controversy_scores.py --errors \
+    ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
+    ${etldir}/${wiki}-${date}-controversy_scores.csv.gz || exit 1
+
+time pv ${etldir}/${wiki}-${date}-controversy_scores.csv.gz | gunzip | $PSQL -c "COPY ${schema}.page_controversy FROM STDIN DELIMITERS ',' CSV HEADER QUOTE E'\"'" || exit 1
 

@@ -94,10 +94,9 @@ if __name__ == "__main__":
  
     with gzip.open(outfile, 'wb') as o:
         writer = csv.writer(o, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
-        writer.writerow(['ns', 'pageid', 'revisionid', 'contributorid', 'iso2', 'timestamp', 'sha1_is_known'])
+        writer.writerow(['ns', 'pageid', 'revisionid', 'contributorid', 'iso2', 'timestamp'])
         idx = 0
         inrevision = False
-        known_sha1s = set()
         context = etree.iterparse(gzip.open(args.infile, 'r'), events=('start', 'end'))
         event, root = context.next()
         for event, elem in context:
@@ -108,7 +107,6 @@ if __name__ == "__main__":
                     incontributor = False
                     pageid  = None
                     ns = None
-                    known_sha1s.clear()
                 elif tag == 'revision':
                     inrevision = True
                     incontributor = False
@@ -117,8 +115,6 @@ if __name__ == "__main__":
                     ip = None
                     iso2 = None
                     timestamp = None
-                    sha1 = None
-                    sha1_is_known = False
                     comment = None
                 elif tag == 'contributor':
                     incontributor = True
@@ -136,14 +132,9 @@ if __name__ == "__main__":
                         iso2 = geoip_iso2(geoip, geoip_iso2_cache, ip)
                     elif tag == 'timestamp':
                         timestamp = elem.text
-                    elif tag == 'sha1':
-                        sha1 = elem.text
-                        if sha1 in known_sha1s:
-                            sha1_is_known = True
-                        known_sha1s.add(sha1)
                     elif tag == 'revision':
                         # if ip != None: # only record anon contributions
-                        writer.writerow([ns, pageid, revisionid, contributorid, iso2, timestamp, sha1_is_known])
+                        writer.writerow([ns, pageid, revisionid, contributorid, iso2, timestamp])
                         # progress
                         idx += 1
                         if (idx % 100000)==0:

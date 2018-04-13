@@ -24,17 +24,22 @@ CREATE TABLE wikitemplate.wikipedia_revisions (
       revision integer NOT NULL,
       contributor INTEGER DEFAULT NULL,
       iso2 TEXT DEFAULT NULL,
-      timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-      sha1_is_known bool NOT NULL
+      timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL
 );
 CREATE UNIQUE INDEX ON wikitemplate.wikipedia_revisions(page, revision);
 
-CREATE MATERIALIZED VIEW wikitemplate.wikipedia_page_stats AS 
-  SELECT ns, page, 
-    count(*) num_revisions, 
-    sum(sha1_is_known::integer) as num_reverts 
-  FROM wikitemplate.wikipedia_revisions 
-  GROUP BY ns, page;
+CREATE TABLE wikitemplate.page_controversy (
+      ns integer NOT NULL,
+      page integer NOT NULL,
+      controversy_score integer NOT NULL
+);
+
+CREATE MATERIALIZED VIEW wikitemplate.page_stats AS 
+    SELECT ns, page, 
+        min(timestamp) created_at,
+        count(*) num_revisions
+    FROM wikitemplate.wikipedia_revisions 
+    GROUP BY ns, page;
 
 
 CREATE VIEW wikitemplate.view_article_revisions AS
