@@ -41,6 +41,12 @@ if __name__ == "__main__":
         writer.writerow(['ns', 'pageid', 'controversy'])
         idx = 0
         inrevision = False
+        incontributor = False
+        pageid = None
+        ns = None
+        userid = None
+        prev_sha1 = None
+        sha1 = None
         user_edits = collections.Counter() # user -> edit count
         original_author = dict() # sha1 -> user
         user_reverts = collections.Counter() # (user1, user2) -> revert count
@@ -50,8 +56,6 @@ if __name__ == "__main__":
             tag = strip_tag_name(elem.tag)
             if event == 'start':
                 if tag == 'page': 
-                    inrevision = False
-                    incontributor = False
                     pageid = None
                     ns = None
                     user_edits.clear()
@@ -59,8 +63,8 @@ if __name__ == "__main__":
                     user_reverts.clear()
                 elif tag == 'revision':
                     inrevision = True
-                    incontributor = False
                     userid = None # ID or IP string
+                    prev_sha1 = sha1
                     sha1 = None
                 elif tag == 'contributor':
                     incontributor = True
@@ -77,13 +81,15 @@ if __name__ == "__main__":
                         sha1 = elem.text
                     elif tag == 'revision':
                         inrevision = False
-                        user_edits.update(userid)
-                        if sha1 not in original_author:
-                            # this is a new contribution
-                            original_author[sha1] = userid
-                        else:
-                            # this is a revert
-                            user_reverts.update([(userid, original_author[sha1])])
+                        user_edits.update([userid])
+                        if (prev_sha1!=None):
+                            if (prev_sha1 not in original_author):
+                                # this is a new contribution
+                                original_author[prev_sha1] = userid
+                            else:
+                                # this is a revert
+                                user_reverts.update([(userid, original_author[prev_sha1])])
+                                original_author[prev_sha1] = userid # update author
                         # progress
                         idx += 1
                         if (idx % 100000)==0:
@@ -100,7 +106,7 @@ if __name__ == "__main__":
                     # identify mutual reverts between all u1, u2
                     mutual_reverts = collections.Counter() # (u1, u2)
                     for (u1, u2) in user_reverts.keys():
-                        if user_reverts[(u2, u1)] > 0:
+                        if (u1!=u2) and (user_reverts[(u2, u1)] > 0):
                             pair = tuple(sorted((u1, u2))) # consistent order
                             mutual_reverts[pair] = user_reverts[(u1, u2)] + user_reverts[(u2, u1)]
                     num_mr_users = len(set([v for pair in mutual_reverts.keys() for v in pair]))

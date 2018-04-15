@@ -31,7 +31,7 @@ CREATE UNIQUE INDEX ON wikitemplate.wikipedia_revisions(page, revision);
 CREATE TABLE wikitemplate.page_controversy (
       ns integer NOT NULL,
       page integer NOT NULL,
-      controversy_score integer NOT NULL
+      controversy_score bigint NOT NULL
 );
 
 CREATE MATERIALIZED VIEW wikitemplate.page_stats AS 

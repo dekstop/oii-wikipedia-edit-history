@@ -44,7 +44,7 @@ WGET="wget --continue --directory-prefix=${datadir}"
 $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-stub-meta-history.xml.gz || exit 1
 $WGET http://wikimedia.bytemark.co.uk/${wiki}/${date}/${wiki}-${date}-geo_tags.sql.gz || exit 1
 
-echo "Extracting page revision metadata... this will take a while."
+echo "Extracting ${wiki} page revision metadata... this will take a while."
 time $PYTHON ${srcdir}/revisions.py --errors \
     ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
     ${geoipdir}/GeoLite2-Country-current/GeoLite2-Country.mmdb \
@@ -82,7 +82,7 @@ time $PSQL -c "REFRESH MATERIALIZED VIEW ${schema}.article_province" || exit 1
 ## Controvery scores
 ##
 
-echo "Computing controversy scores from the edit history... this will take a while."
+echo "Computing ${wiki} controversy scores... this will take a while."
 time $PYTHON ${srcdir}/controversy_scores.py --errors \
     ${datadir}/${wiki}-${date}-stub-meta-history.xml.gz \
     ${etldir}/${wiki}-${date}-controversy_scores.csv.gz || exit 1
