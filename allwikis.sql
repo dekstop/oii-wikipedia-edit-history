@@ -58,3 +58,18 @@ CREATE MATERIALIZED VIEW allwikis.wiki_stats AS
         GROUP BY wiki
     ) t4 ON (t1.wiki=t4.wiki)
     ORDER BY t1.wiki;
+
+-- A helper join table to track annual page activity. For every page, a row for 
+-- every year of its existence, with a flag for the initial year of page creation.
+CREATE MATERIALIZED VIEW allwikis.page_years AS
+    WITH all_years AS (
+        SELECT first_year + generate_series(0,last_year-first_year) as year
+        FROM (
+            SELECT 
+                date_part('year', min(created_at))::int first_year, 
+                date_part('year', max(created_at))::int last_year
+            FROM allwikis.page_stats
+        )t1)
+    SELECT year, page, (date_part('year', created_at)::int=year) as is_first_year
+    FROM allwikis.page_stats
+    JOIN all_years ON date_part('year', created_at)::int<=year;
