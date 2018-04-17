@@ -23,7 +23,7 @@ PYTHON=~/osm/ipython-env/env/bin/python
 srcdir=~/oiidg/src
 geoipdir=~/oiidg/geoip
 
-datadir=~/oiidg/data/${wiki}_${date}
+datadir=~/oiidg/data/imports/${wiki}_${date}
 etldir=${datadir}/etl
 
 mkdir -p $etldir 2>&1
