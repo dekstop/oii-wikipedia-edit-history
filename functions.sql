@@ -28,7 +28,7 @@ DECLARE
 BEGIN
     EXECUTE 'DROP TYPE IF EXISTS wiki';
     query := 'CREATE TYPE wiki AS ENUM (';
-    FOR wiki IN SELECT * FROM get_wiki_namespaces()
+    FOR wiki IN SELECT get_wiki_namespaces()
     LOOP
         -- RAISE NOTICE '%', wiki.name;
         IF first_table THEN
@@ -62,7 +62,7 @@ BEGIN
         quote_ident(view_table_name);
     query := 'CREATE VIEW ' || quote_ident(global_schema) || '.' || 
         quote_ident(view_table_name) || ' AS ';
-    FOR wiki IN SELECT * FROM get_wiki_namespaces()
+    FOR wiki IN SELECT get_wiki_namespaces()
     LOOP 
         -- RAISE NOTICE '%', wiki.name;
         IF first_table THEN
