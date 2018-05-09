@@ -9,7 +9,5 @@ $ psql $DB -c "GRANT CREATE ON DATABASE \"${DB}\" TO oiidg"
 Load data:
 $ DB=oiidg_wp_20180220
 $ ./initdb.sh $DB
-$ ./loadwiki.sh $DB simplewiki 20180220
-# ... repeat for any other wikis, then:
-$ psql --set ON_ERROR_STOP=1 $DB < allwikis.sql
+$ time ./load_all_wikis.sh $DB 20180220
 
