@@ -45,6 +45,9 @@ CREATE MATERIALIZED VIEW wikitemplate.page_stats AS
 CREATE VIEW wikitemplate.view_article_revisions AS
     SELECT page, revision, contributor, iso2, timestamp FROM wikitemplate.wikipedia_revisions WHERE ns=0;
 
+CREATE VIEW wikitemplate.view_article_anon_revisions AS
+    SELECT page, revision, iso2, timestamp FROM wikitemplate.view_article_revisions WHERE contributor IS NULL;
+
 CREATE MATERIALIZED VIEW wikitemplate.article_geotags AS
     SELECT
       gt_id as id, gt_page_id as page,
