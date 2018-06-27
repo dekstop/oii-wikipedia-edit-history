@@ -14,6 +14,7 @@ CREATE OR REPLACE VIEW allwikis.view_wiki_tablesizes AS
 
 -- Views across wiki namespaces
 SELECT create_wiki_enum_type();
+SELECT create_multiwiki_table_view('allwikis', 'view_article_revisions');
 SELECT create_multiwiki_table_view('allwikis', 'view_article_anon_revisions');
 SELECT create_multiwiki_table_view('allwikis', 'page_stats');
 SELECT create_multiwiki_table_view('allwikis', 'page_controversy');
@@ -26,18 +27,18 @@ SELECT create_multiwiki_table_view('allwikis', 'article_province');
 -- Derivative tables
 --
 
-CREATE MATERIALIZED VIEW allwikis.article_editorloc AS
+CREATE MATERIALIZED VIEW allwikis.article_anon_editorloc AS
     SELECT wiki, page, iso2, count(*) num_revisions 
     FROM allwikis.view_article_anon_revisions
     GROUP BY wiki, page, iso2;
 
-CREATE MATERIALIZED VIEW allwikis.country_editorloc AS
+CREATE MATERIALIZED VIEW allwikis.country_anon_editorloc AS
     SELECT ae.wiki, 
         ac.gid as country_gid, 
         ae.iso2 as editor_iso2, 
         count(distinct ae.page) num_articles,
         sum(ae.num_revisions) num_revisions
-    FROM allwikis.article_editorloc ae
+    FROM allwikis.article_anon_editorloc ae
     JOIN allwikis.article_country ac ON (ae.wiki=ac.wiki AND ae.page=ac.page)
     GROUP BY ae.wiki, ac.gid, ae.iso2;
 
